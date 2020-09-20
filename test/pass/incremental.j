@@ -1,4 +1,8 @@
 class Yeet {
-    Void main() {
+    Void main(Int x, Int y) {
+        Int x;
+        Yeet y;
+
+        return ;
     }
 }

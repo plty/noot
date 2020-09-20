@@ -16,6 +16,7 @@ import java_cup.runtime.ScannerBuffer;
 import java_cup.runtime.Symbol;
 
 import jlite.lexer.Scanner;
+import com.google.common.collect.ImmutableList;
 
 parser code {:
     private List<String> lines;
@@ -35,12 +36,20 @@ parser code {:
             throw e;
         }
     }
+
+    public static <T> List<T> prepend(T v, List<T> l) {
+        return new ImmutableList.Builder<T>().add(v).addAll(l).build();
+    }
 :};
 
 terminal LPAREN, RPAREN, LBRACE, RBRACE;
-terminal CLASS, VOID, MAIN;
+terminal COMMA, DOT, SEMI;
+
+terminal CLASS, MAIN, RETURN;
+terminal VOID, BOOL, INT, STRING;
 
 terminal String CNAME;
+terminal String ID;
 
 non terminal Ast.Program program;
 non terminal Ast.Main main_class;
@@ -48,28 +57,79 @@ non terminal Ast.Method main_method;
 
 non terminal List<Ast.Cls> classes;
 non terminal List<Ast.Arg> args;
+non terminal List<Ast.Arg> rest_args;
 non terminal Ast.Body body;
+non terminal List<Ast.Stmt> stmts;
+
+non terminal List<Ast.Var> vars;
+non terminal Ast.Var var;
+
+non terminal Ast.Type type;
+non terminal Ast.Id id;
 
 program ::=
-       main_class:mc
-        {: RESULT = new Ast.Program(mc, null); :}
+      main_class:mc
+          {: RESULT = new Ast.Program(mc, null); :}
     ;
 
 main_class ::=
-       CLASS CNAME:name LBRACE main_method:m RBRACE
-        {: RESULT = new Ast.Main(name, m); :}
+      CLASS CNAME:name LBRACE main_method:m RBRACE
+          {: RESULT = new Ast.Main(name, m); :}
       ;
 
 main_method ::=
         VOID MAIN LPAREN args:args RPAREN body:body
-              {: RESULT = new Ast.Method(new Ast.Id("main"), new Ast.Typ("Void"), args, body); :}
+              {: RESULT = new Ast.Method(new Ast.Id("main"), new Ast.Type("Void"), args, body); :}
       ;
 
 classes ::= {: RESULT = List.of(); :};
 
-args ::= {: RESULT = List.of(); :};
-
 body ::=
-        LBRACE RBRACE
-              {: RESULT = new Ast.Body(List.of(), List.of()); :}
-      ;
+      LBRACE vars:v stmts:s RBRACE
+          {: RESULT = new Ast.Body(v, s); :}
+    ;
+
+stmts ::=
+      RETURN SEMI
+          {: RESULT = List.of(new Ast.Return(null)); :}
+    ;
+
+vars ::=
+      var:v vars:vs
+          {: RESULT = prepend(v, vs); :}
+    | {: RESULT = List.of(); :}
+    ;
+
+var ::=
+      type:t id:id SEMI
+          {: RESULT = new Ast.Var(t, id); :}
+    ;
+
+type ::=
+      CNAME:c
+          {: RESULT = new Ast.Type(c); :}
+    | VOID
+          {: RESULT = new Ast.Type("Void"); :}
+    | BOOL
+          {: RESULT = new Ast.Type("Bool"); :}
+    | INT
+          {: RESULT = new Ast.Type("Int"); :}
+    | STRING
+          {: RESULT = new Ast.Type("String"); :}
+    ;
+
+args ::=
+      type:t id:id rest_args:rest
+          {: RESULT = prepend(new Ast.Arg(t, id), rest); :}
+    |
+          {: RESULT = List.of(); :}
+    ;
+
+rest_args ::=
+      COMMA type:t id:id rest_args:rest
+          {: RESULT = prepend(new Ast.Arg(t, id), rest); :}
+    |
+          {: RESULT = List.of(); :}
+    ;
+
+id ::= ID:id {: RESULT = new Ast.Id(id); :};

@@ -55,13 +55,20 @@ Integer = [0-9]+
   /* keywords */
   "class" { return symbol("class",sym.CLASS); }
   "main" { return symbol("main",sym.MAIN); }
-  "Void" { return symbol("Void",sym.VOID); }
+  "return" { return symbol("return",sym.RETURN); }
+  "Void" { return symbol("void",sym.VOID); }
+  "Bool" { return symbol("bool",sym.BOOL); }
+  "Int" { return symbol("int",sym.INT); }
+  "String" { return symbol("string",sym.STRING); }
 
   /* separators */
   "(" { return symbol("(",sym.LPAREN); }
   ")" { return symbol(")",sym.RPAREN); }
   "{" { return symbol("{",sym.LBRACE); }
   "}" { return symbol("}",sym.RBRACE); }
+  ";" { return symbol(";",sym.SEMI); }
+  "." { return symbol(";",sym.DOT); }
+  "," { return symbol(";",sym.COMMA); }
 
   /* comments */
   {Comment} { /* ignore */ }
@@ -70,6 +77,7 @@ Integer = [0-9]+
   {WhiteSpace} { /* ignore */ }
 
   /* literals */
+  {Identifier} { return symbol("Id",sym.ID, yytext()); }
   {ClassName} { return symbol("cls", sym.CNAME, yytext()); }
 }
 

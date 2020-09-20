@@ -4,10 +4,10 @@ import java.util.List;
 public class Ast {
 
     public static class Arg {
-        final Typ type;
+        final Type type;
         final Id id;
 
-        public Arg(Typ type, Id id) {
+        public Arg(Type type, Id id) {
             this.type = type;
             this.id = id;
         }
@@ -58,11 +58,11 @@ public class Ast {
 
     public static class Method {
         final Id id;
-        final Typ ret;
+        final Type ret;
         final List<Arg> args;
         final Body body;
 
-        public Method(Id id, Typ ret, List<Arg> args, Body body) {
+        public Method(Id id, Type ret, List<Arg> args, Body body) {
             this.id = id;
             this.ret = ret;
             this.args = args;
@@ -84,19 +84,26 @@ public class Ast {
     public static class Stmt {
     }
 
-    public static class Typ {
+    public static class Return extends Stmt {
+        final Object value;
+        public Return(Object value) {
+            this.value = value;
+        }
+    }
+
+    public static class Type {
         final String name;
 
-        public Typ(String name) {
+        public Type(String name) {
             this.name = name;
         }
     }
 
     public static class Var {
-        final Typ type;
+        final Type type;
         final Id id;
 
-        public Var(Typ type, Id id) {
+        public Var(Type type, Id id) {
             this.type = type;
             this.id = id;
         }
