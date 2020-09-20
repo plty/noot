@@ -1,0 +1,75 @@
+/* Simple +/-/* expression language; parser evaluates constant expressions on the fly*/
+package jlite.parser;
+
+import java.util.*;
+import java.io.*;
+import java.util.*;
+import java.util.stream.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+import java_cup.runtime.*;
+import java_cup.runtime.SymbolFactory;
+import java_cup.runtime.ComplexSymbolFactory;
+import java_cup.runtime.ComplexSymbolFactory.ComplexSymbol;
+import java_cup.runtime.ScannerBuffer;
+import java_cup.runtime.Symbol;
+
+import jlite.lexer.Scanner;
+
+parser code {:
+    private List<String> lines;
+    private String fileLoc;
+
+    public parser(String fileLoc) throws Exception {
+        super(new Scanner(new FileReader(fileLoc)), new ComplexSymbolFactory());
+        this.fileLoc = fileLoc;
+        this.lines = Files.readAllLines(Paths.get(fileLoc));
+    }
+
+   public static Ast.Program parse(String fileLoc) throws Exception {
+        parser p = new parser(fileLoc);
+        try {
+            return (Ast.Program) p.parse().value;
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+:};
+
+terminal LPAREN, RPAREN, LBRACE, RBRACE;
+terminal CLASS, VOID, MAIN;
+
+terminal String CNAME;
+
+non terminal Ast.Program program;
+non terminal Ast.Main main_class;
+non terminal Ast.Method main_method;
+
+non terminal List<Ast.Cls> classes;
+non terminal List<Ast.Arg> args;
+non terminal Ast.Body body;
+
+program ::=
+       main_class:mc
+        {: RESULT = new Ast.Program(mc, null); :}
+    ;
+
+main_class ::=
+       CLASS CNAME:name LBRACE main_method:m RBRACE
+        {: RESULT = new Ast.Main(name, m); :}
+      ;
+
+main_method ::=
+        VOID MAIN LPAREN args:args RPAREN body:body
+              {: RESULT = new Ast.Method(new Ast.Id("main"), new Ast.Typ("Void"), args, body); :}
+      ;
+
+classes ::= {: RESULT = List.of(); :};
+
+args ::= {: RESULT = List.of(); :};
+
+body ::=
+        LBRACE RBRACE
+              {: RESULT = new Ast.Body(List.of(), List.of()); :}
+      ;

@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  jleet:
+    image: gradle:jdk11
+    command: tail -f /dev/null
+    working_dir: /jleet
+    volumes:
+      - ./:/jleet
+
