@@ -103,8 +103,6 @@ non terminal Ast.Expr atom;
 non terminal List<Ast.Expr> expr_list;
 non terminal List<Ast.Expr> rest_expr_list;
 
-non terminal List<Ast.Expr> rest_expr_list;
-
 program ::=
     main_class:mc classes:cs
           {: RESULT = new Ast.Program(mc, cs); :}
