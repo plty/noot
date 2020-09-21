@@ -126,7 +126,6 @@ Integer = [0-9]+
   \\[0-3]?[0-7]?[0-7]            { char val = (char) Integer.parseInt(yytext().substring(1), 8); sb.append(val); }
   \\x[0-9a-f]?[0-9a-f]           { char val = (char) Integer.parseInt(yytext().substring(2), 16); sb.append(val); }
 
-  /* error cases */
   \\. { throw new Error("Illegal character"); }
   {LineTerminator} { throw new Error("Unterminated string"); }
 }

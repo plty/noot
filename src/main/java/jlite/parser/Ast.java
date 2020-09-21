@@ -183,12 +183,12 @@ public class Ast {
     }
 
     public static class Assignment implements Stmt {
-        final Id id;
-        final Expr e;
+        final Expr lhs;
+        final Expr rhs;
 
-        public Assignment(Id id, Expr e) {
-            this.id = id;
-            this.e = e;
+        public Assignment(Expr lhs, Expr rhs) {
+            this.lhs = lhs;
+            this.rhs = rhs;
         }
     }
 

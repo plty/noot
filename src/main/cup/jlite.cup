@@ -103,6 +103,8 @@ non terminal Ast.Expr atom;
 non terminal List<Ast.Expr> expr_list;
 non terminal List<Ast.Expr> rest_expr_list;
 
+non terminal List<Ast.Expr> rest_expr_list;
+
 program ::=
     main_class:mc classes:cs
           {: RESULT = new Ast.Program(mc, cs); :}
@@ -215,6 +217,10 @@ stmt ::=
           {: RESULT = new Ast.Call(new Ast.Id("println"), List.of(e)); :}
     | id:id ASSIGN expr:e SEMI
           {: RESULT = new Ast.Assignment(id, e); :}
+    | atom:a id:id ASSIGN expr:e SEMI
+          {: RESULT = new Ast.Assignment(new Ast.Member(a, id), e); :}
+    | atom:a LPAREN expr_list:el RPAREN SEMI
+          {: RESULT = new Ast.Call(a, el); :}
     ;
 
 expr ::=
