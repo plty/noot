@@ -17,6 +17,7 @@ import jlite.parser.sym;
 %column
 
 %{
+  StringBuilder sb = new StringBuilder();
   ComplexSymbolFactory sf = new ComplexSymbolFactory();
 
   public Scanner(java.io.Reader in, ComplexSymbolFactory sf){
@@ -71,13 +72,34 @@ Integer = [0-9]+
   "println" { return symbol("println", sym.PRINTLN); }
   "return" { return symbol("return", sym.RETURN); }
 
+  "this" { return symbol("this", sym.THIS); }
+  "new" { return symbol("new", sym.NEW); }
+  "null" { return symbol("null", sym.NULL); }
+
   /* separators */
-  "(" { return symbol("(",sym.LPAREN); }
-  ")" { return symbol(")",sym.RPAREN); }
-  "{" { return symbol("{",sym.LBRACE); }
-  "}" { return symbol("}",sym.RBRACE); }
-  ";" { return symbol(";",sym.SEMI); }
-  "," { return symbol(";",sym.COMMA); }
+  "(" { return symbol("(", sym.LPAREN); }
+  ")" { return symbol(")", sym.RPAREN); }
+  "{" { return symbol("{", sym.LBRACE); }
+  "}" { return symbol("}", sym.RBRACE); }
+  ";" { return symbol(";", sym.SEMI); }
+  "," { return symbol(",", sym.COMMA); }
+  "." { return symbol(".", sym.DOT); }
+
+  /* operators */
+  "+" { return symbol("+", sym.PLUS); }
+  "-" { return symbol("-", sym.MINUS); }
+  "*" { return symbol("*", sym.MUL); }
+  "/" { return symbol("/", sym.DIV); }
+  "<" { return symbol("<", sym.LT); }
+  ">" { return symbol(">", sym.GT); }
+  "<=" { return symbol("<=", sym.LEQ); }
+  ">=" { return symbol(">=", sym.GEQ); }
+  "==" { return symbol("==", sym.EQ); }
+  "!=" { return symbol("!=", sym.NEQ); }
+  "=" { return symbol("=", sym.ASSIGN); }
+  "!" { return symbol("!", sym.NOT); }
+  "||" { return symbol("||", sym.OR); }
+  "&&" { return symbol("&&", sym.AND); }
 
   /* comments */
   {Comment} { /* ignore */ }
@@ -86,8 +108,28 @@ Integer = [0-9]+
   {WhiteSpace} { /* ignore */ }
 
   /* literals */
-  {Identifier} { return symbol("Id",sym.ID, yytext()); }
-  {ClassName} { return symbol("cls", sym.CNAME, yytext()); }
+  {Integer} { return symbol("int_lit", sym.INT_LIT, new Integer(Integer.parseInt(yytext()))); }
+  \" { yybegin(STRING); sb.setLength(0); }
+  {Identifier} { return symbol("id", sym.ID, yytext()); }
+  {ClassName} { return symbol("cname", sym.CNAME, yytext()); }
 }
 
-<<EOF>> { return symbol("EOF",sym.EOF); }
+<STRING> {
+  \" { yybegin(YYINITIAL); return symbol("string_lit", sym.STR_LIT, sb.toString()); }
+  [^\n\r\"\\]+                   { sb.append( yytext() ); }
+  "\\t"                          { sb.append('\t'); }
+  "\\n"                          { sb.append('\n'); }
+
+  "\\r"                          { sb.append('\r'); }
+  "\\\""                         { sb.append('\"'); }
+  "\\\\"                         { sb.append('\\'); }
+  \\[0-3]?[0-7]?[0-7]            { char val = (char) Integer.parseInt(yytext().substring(1), 8); sb.append(val); }
+  \\x[0-9a-f]?[0-9a-f]           { char val = (char) Integer.parseInt(yytext().substring(2), 16); sb.append(val); }
+
+  /* error cases */
+  \\. { throw new Error("Illegal character"); }
+  {LineTerminator} { throw new Error("Unterminated string"); }
+}
+
+
+<<EOF>> { return symbol("EOF", sym.EOF); }

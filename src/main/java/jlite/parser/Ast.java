@@ -1,4 +1,5 @@
 package jlite.parser;
+
 import java.util.List;
 
 public class Ast {
@@ -39,7 +40,7 @@ public class Ast {
     public interface Expr {
     }
 
-    public static class Id  implements  Expr{
+    public static class Id implements Expr {
         final String id;
 
         public Id(String id) {
@@ -156,6 +157,64 @@ public class Ast {
 
         public Lit(Object v) {
             this.v = v;
+        }
+    }
+
+    public static class BinOp implements Stmt, Expr {
+        final String op;
+        final Expr l;
+        final Expr r;
+
+        public BinOp(String op, Expr l, Expr r) {
+            this.op = op;
+            this.l = l;
+            this.r = r;
+        }
+    }
+
+    public static class UnOp implements Stmt, Expr {
+        final String op;
+        final Expr e;
+
+        public UnOp(String op, Expr e) {
+            this.op = op;
+            this.e = e;
+        }
+    }
+
+    public static class Assignment implements Stmt {
+        final Id id;
+        final Expr e;
+
+        public Assignment(Id id, Expr e) {
+            this.id = id;
+            this.e = e;
+        }
+    }
+
+    public static class Brace implements Expr {
+        final Expr e;
+
+        public Brace(Expr e) {
+            this.e = e;
+        }
+    }
+
+    public static class New implements Expr {
+        final String name;
+
+        public New(String name) {
+            this.name = name;
+        }
+    }
+
+    public static class Member implements Expr {
+        final Expr e;
+        final Id id;
+
+        public Member(Expr e, Id id) {
+            this.e = e;
+            this.id = id;
         }
     }
 }

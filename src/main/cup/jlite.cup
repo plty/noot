@@ -46,15 +46,24 @@ parser code {:
 :};
 
 terminal LPAREN, RPAREN, LBRACE, RBRACE;
-terminal COMMA, SEMI;
+terminal COMMA, DOT, SEMI;
 
 terminal CLASS, MAIN;
 terminal VOID, BOOL, INT, STRING;
 terminal IF, ELSE, WHILE, READLN, PRINTLN, RETURN;
+
+terminal PLUS, MINUS, MUL, DIV;
+terminal LT, GT, LEQ, GEQ, EQ, NEQ;
+terminal AND, OR, NOT;
+
+terminal ASSIGN;
 terminal TRUE, FALSE;
+terminal THIS, NEW, NULL;
 
 terminal String CNAME;
 terminal String ID;
+terminal Integer INT_LIT;
+terminal String STR_LIT;
 
 non terminal Ast.Program program;
 non terminal Ast.Main main_class;
@@ -79,6 +88,20 @@ non terminal Ast.Block block;
 non terminal List<Ast.Stmt> _block;
 
 non terminal Ast.Expr expr;
+non terminal Ast.Expr disjs;
+non terminal Ast.Expr conjs;
+non terminal Ast.Expr b_term;
+non terminal String comp_op;
+non terminal Ast.Expr b_grd;
+
+non terminal Ast.Expr a_expr;
+non terminal Ast.Expr a_term;
+non terminal Ast.Expr a_ftr;
+
+non terminal Ast.Expr atom;
+
+non terminal List<Ast.Expr> expr_list;
+non terminal List<Ast.Expr> rest_expr_list;
 
 program ::=
     main_class:mc classes:cs
@@ -190,13 +213,146 @@ stmt ::=
           {: RESULT = new Ast.Call(new Ast.Id("readln"), List.of(id)); :}
     | PRINTLN LPAREN expr:e RPAREN SEMI
           {: RESULT = new Ast.Call(new Ast.Id("println"), List.of(e)); :}
+    | id:id ASSIGN expr:e SEMI
+          {: RESULT = new Ast.Assignment(id, e); :}
     ;
 
 expr ::=
-      id:id
-          {: RESULT = id; :}
+/* unknown expr */
+      atom:a
+          {: RESULT = a; :}
+
+/* boolean expr */
+    | disjs:a OR conjs:b
+          {: RESULT = new Ast.BinOp("||", a, b); :}
+    | conjs:a AND b_term:b
+          {: RESULT = new Ast.BinOp("&&", a, b); :}
+    | a_expr:a comp_op:op a_expr:b
+          {: RESULT = new Ast.BinOp(op, a, b); :}
+    | NOT b_grd:e
+          {: RESULT = new Ast.UnOp("!", e); :}
     | TRUE
           {: RESULT = new Ast.Lit(true); :}
     | FALSE
           {: RESULT = new Ast.Lit(false); :}
+
+/* arithmetic expr */
+    | a_expr:a PLUS a_term:b
+          {: RESULT = new Ast.BinOp("+", a, b); :}
+    | a_expr:a MINUS a_term:b
+          {: RESULT = new Ast.BinOp("-", a, b); :}
+    | a_term:a MUL a_ftr:b
+          {: RESULT = new Ast.BinOp("*", a, b); :}
+    | a_term:a DIV a_ftr:b
+          {: RESULT = new Ast.BinOp("/", a, b); :}
+    | INT_LIT:i
+          {: RESULT = new Ast.Lit(i); :}
+    | MINUS a_ftr:e
+          {: RESULT = new Ast.UnOp("-", e); :}
+
+/* string expr */
+    | STR_LIT:s
+          {: RESULT = new Ast.Lit(s); :}
     ;
+
+/* disjunctions */
+disjs ::=
+      disjs:a OR conjs:b
+          {: RESULT = new Ast.BinOp("||", a, b); :}
+    | conjs:e
+          {: RESULT = e; :}
+    ;
+
+/* conjunctions */
+conjs ::=
+      conjs:a AND b_term:b
+          {: RESULT = new Ast.BinOp("&&", a, b); :}
+    | b_term:e
+          {: RESULT = e; :}
+    ;
+
+b_term ::=
+      a_expr:a comp_op:op a_expr:b
+          {: RESULT = new Ast.BinOp(op, a, b); :}
+    | b_grd:e
+          {: RESULT = e; :}
+    ;
+
+comp_op ::=
+      EQ  {: RESULT = "=="; :}
+    | NEQ {: RESULT = "!="; :}
+    | LT  {: RESULT = "<"; :}
+    | LEQ {: RESULT = "<="; :}
+    | GT  {: RESULT = ">"; :}
+    | GEQ {: RESULT = ">="; :}
+    ;
+
+b_grd ::=
+      NOT b_grd:e
+          {: RESULT = new Ast.UnOp("!", e); :}
+    | TRUE
+          {: RESULT = new Ast.Lit(true); :}
+    | FALSE
+          {: RESULT = new Ast.Lit(false); :}
+    | atom:a
+          {: RESULT = a; :}
+    ;
+
+a_expr ::=
+      a_expr:a PLUS a_term:b
+          {: RESULT = new Ast.BinOp("+", a, b); :}
+    | a_expr:a MINUS a_term:b
+          {: RESULT = new Ast.BinOp("-", a, b); :}
+    | a_term:e
+          {: RESULT = e; :}
+    ;
+
+a_term ::=
+      a_term:a MUL a_ftr:b
+          {: RESULT = new Ast.BinOp("*", a, b); :}
+    | a_term:a DIV a_ftr:b
+          {: RESULT = new Ast.BinOp("/", a, b); :}
+    | a_ftr:b
+          {: RESULT = b; :}
+    ;
+
+a_ftr ::=
+      INT_LIT:i
+          {: RESULT = new Ast.Lit(i); :}
+    | MINUS a_ftr:e
+          {: RESULT = new Ast.UnOp("-", e); :}
+    | atom:a
+          {: RESULT = a; :}
+    ;
+
+atom ::=
+      id:id
+          {: RESULT = id; :}
+    | LPAREN expr:e RPAREN
+          {: RESULT = new Ast.Brace(e); :}
+    | NEW CNAME:c LPAREN RPAREN
+          {: RESULT = new Ast.New(c); :}
+    | NULL
+          {: RESULT = new Ast.Lit(null); :}
+    | THIS
+          {: RESULT = new Ast.Id("this"); :}
+    | atom:a DOT id:id
+          {: RESULT = new Ast.Member(a, id); :}
+    | atom:a LPAREN expr_list:el RPAREN
+          {: RESULT = new Ast.Call(a, el); :}
+    ;
+
+expr_list ::=
+      expr:e rest_expr_list:rest
+          {: RESULT = prepend(e, rest); :}
+    |
+          {: RESULT = List.of(); :}
+    ;
+
+rest_expr_list ::=
+      COMMA expr:e rest_expr_list:rest
+          {: RESULT = prepend(e, rest); :}
+    |
+          {: RESULT = List.of(); :}
+    ;
+
