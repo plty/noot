@@ -107,21 +107,11 @@ body ::=
           {: RESULT = new Ast.Body(v, s); :}
     ;
 
-stmts ::=
-      RETURN SEMI
-          {: RESULT = List.of(new Ast.Return(null)); :}
-    ;
-
-vars ::=
-      vars:vs var:v
-          {: RESULT = append(v, vs); :}
-    |
-          {: RESULT = List.of(); :}
-    ;
-
-var ::=
-      type:t id:id SEMI
-          {: RESULT = new Ast.Var(t, id); :}
+id ::=
+      ID:id
+          {: RESULT = new Ast.Id(id); :}
+    | MAIN
+          {: RESULT = new Ast.Id("main"); :}
     ;
 
 type ::=
@@ -135,6 +125,18 @@ type ::=
           {: RESULT = new Ast.Type("Int"); :}
     | STRING
           {: RESULT = new Ast.Type("String"); :}
+    ;
+
+vars ::=
+      vars:vs var:v
+          {: RESULT = append(v, vs); :}
+    |
+          {: RESULT = List.of(); :}
+    ;
+
+var ::=
+      type:t id:id SEMI
+          {: RESULT = new Ast.Var(t, id); :}
     ;
 
 args ::=
@@ -151,9 +153,7 @@ rest_args ::=
           {: RESULT = List.of(); :}
     ;
 
-id ::=
-      ID:id
-          {: RESULT = new Ast.Id(id); :}
-    | MAIN
-          {: RESULT = new Ast.Id("main"); :}
+stmts ::=
+      RETURN SEMI
+          {: RESULT = List.of(new Ast.Return(null)); :}
     ;
