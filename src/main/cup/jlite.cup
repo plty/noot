@@ -1,4 +1,3 @@
-/* Simple +/-/* expression language; parser evaluates constant expressions on the fly*/
 package jlite.parser;
 
 import java.util.*;
@@ -49,8 +48,10 @@ parser code {:
 terminal LPAREN, RPAREN, LBRACE, RBRACE;
 terminal COMMA, SEMI;
 
-terminal CLASS, MAIN, RETURN;
+terminal CLASS, MAIN;
 terminal VOID, BOOL, INT, STRING;
+terminal IF, ELSE, WHILE, READLN, PRINTLN, RETURN;
+terminal TRUE, FALSE;
 
 terminal String CNAME;
 terminal String ID;
@@ -65,13 +66,19 @@ non terminal List<Ast.Method> methods;
 non terminal List<Ast.Arg> args;
 non terminal List<Ast.Arg> rest_args;
 non terminal Ast.Body body;
-non terminal List<Ast.Stmt> stmts;
 
 non terminal List<Ast.Var> vars;
 non terminal Ast.Var var;
 
 non terminal Ast.Type type;
 non terminal Ast.Id id;
+
+non terminal Ast.Stmt stmt;
+non terminal List<Ast.Stmt> stmts;
+non terminal Ast.Block block;
+non terminal List<Ast.Stmt> _block;
+
+non terminal Ast.Expr expr;
 
 program ::=
     main_class:mc classes:cs
@@ -153,7 +160,43 @@ rest_args ::=
           {: RESULT = List.of(); :}
     ;
 
+block ::=
+      _block:b
+          {: RESULT = new Ast.Block(b); :}
+    ;
+
+_block ::=
+      LBRACE stmt:s stmts:rest RBRACE
+          {: RESULT = prepend(s, rest); :}
+    ;
+
 stmts ::=
+      stmt:s stmts:rest
+          {: RESULT = prepend(s, rest); :}
+    |
+          {: RESULT = List.of(); :}
+    ;
+
+stmt ::=
       RETURN SEMI
-          {: RESULT = List.of(new Ast.Return(null)); :}
+          {: RESULT = new Ast.Return(null); :}
+    | RETURN expr:e SEMI
+          {: RESULT = new Ast.Return(e); :}
+    | IF LPAREN expr:cond RPAREN block:cons ELSE block:alt
+          {: RESULT = new Ast.If(cond, cons, alt); :}
+    | WHILE LPAREN expr:cond RPAREN block:b
+          {: RESULT = new Ast.While(cond, b); :}
+    | READLN LPAREN id:id RPAREN SEMI
+          {: RESULT = new Ast.Call(new Ast.Id("readln"), List.of(id)); :}
+    | PRINTLN LPAREN expr:e RPAREN SEMI
+          {: RESULT = new Ast.Call(new Ast.Id("println"), List.of(e)); :}
+    ;
+
+expr ::=
+      id:id
+          {: RESULT = id; :}
+    | TRUE
+          {: RESULT = new Ast.Lit(true); :}
+    | FALSE
+          {: RESULT = new Ast.Lit(false); :}
     ;

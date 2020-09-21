@@ -39,10 +39,10 @@ WhiteSpace     = {LineTerminator} | [ \t\f]
 
 
 /* comments */
-Comment = {TraditionalComment} | {EndOfLineComment}
+Comment = {BlockComment} | {LineComment}
 
-TraditionalComment = "/*" [^*] ~"*/" | "/*" "*"+ "/"
-EndOfLineComment = "//" {InputCharacter}* {LineTerminator}?
+BlockComment = "/*" [^*] ~"*/" | "/*" "*"+ "/"
+LineComment = "//" {InputCharacter}* {LineTerminator}?
 
 Identifier = [a-z][a-zA-Z0-9_]*
 ClassName = [A-Z][a-zA-Z0-9_]*
@@ -53,13 +53,23 @@ Integer = [0-9]+
 %%
 <YYINITIAL> {
   /* keywords */
-  "class" { return symbol("class",sym.CLASS); }
-  "main" { return symbol("main",sym.MAIN); }
-  "return" { return symbol("return",sym.RETURN); }
-  "Void" { return symbol("void",sym.VOID); }
-  "Bool" { return symbol("bool",sym.BOOL); }
-  "Int" { return symbol("int",sym.INT); }
-  "String" { return symbol("string",sym.STRING); }
+  "class" { return symbol("class", sym.CLASS); }
+  "main" { return symbol("main", sym.MAIN); }
+
+  "Void" { return symbol("void", sym.VOID); }
+  "Bool" { return symbol("bool", sym.BOOL); }
+  "Int" { return symbol("int", sym.INT); }
+  "String" { return symbol("string", sym.STRING); }
+
+  "true" { return symbol("true", sym.TRUE); }
+  "false" { return symbol("false", sym.FALSE); }
+
+  "if" { return symbol("if", sym.IF); }
+  "else" { return symbol("else", sym.ELSE); }
+  "while" { return symbol("while", sym.WHILE); }
+  "readln" { return symbol("readln", sym.READLN); }
+  "println" { return symbol("println", sym.PRINTLN); }
+  "return" { return symbol("return", sym.RETURN); }
 
   /* separators */
   "(" { return symbol("(",sym.LPAREN); }

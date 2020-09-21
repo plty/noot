@@ -36,14 +36,14 @@ public class Ast {
         }
     }
 
-    public static class Expr {
+    public interface Expr {
     }
 
-    public static class Id {
-        final String name;
+    public static class Id  implements  Expr{
+        final String id;
 
-        public Id(String name) {
-            this.name = name;
+        public Id(String id) {
+            this.id = id;
         }
     }
 
@@ -82,11 +82,12 @@ public class Ast {
         }
     }
 
-    public static class Stmt {
+    public interface Stmt {
     }
 
-    public static class Return extends Stmt {
+    public static class Return implements Stmt {
         final Object value;
+
         public Return(Object value) {
             this.value = value;
         }
@@ -107,6 +108,54 @@ public class Ast {
         public Var(Type type, Id id) {
             this.type = type;
             this.id = id;
+        }
+    }
+
+    public static class Block {
+        final List<Stmt> stmts;
+
+        public Block(List<Stmt> stmts) {
+            this.stmts = stmts;
+        }
+    }
+
+    public static class If implements Stmt {
+        final Expr cond;
+        final Block cons;
+        final Block alt;
+
+        public If(Expr cond, Block cons, Block alt) {
+            this.cond = cond;
+            this.cons = cons;
+            this.alt = alt;
+        }
+    }
+
+    public static class While implements Stmt {
+        final Expr cond;
+        final Block block;
+
+        public While(Expr cond, Block block) {
+            this.cond = cond;
+            this.block = block;
+        }
+    }
+
+    public static class Call implements Stmt, Expr {
+        final Expr callee;
+        final List<Expr> args;
+
+        public Call(Expr callee, List<Expr> args) {
+            this.callee = callee;
+            this.args = args;
+        }
+    }
+
+    public static class Lit implements Stmt, Expr {
+        final Object v;
+
+        public Lit(Object v) {
+            this.v = v;
         }
     }
 }
