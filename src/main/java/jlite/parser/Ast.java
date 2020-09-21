@@ -2,7 +2,6 @@ package jlite.parser;
 import java.util.List;
 
 public class Ast {
-
     public static class Arg {
         final Type type;
         final Id id;
@@ -27,10 +26,12 @@ public class Ast {
 
     public static class Cls {
         final String name;
+        final List<Var> vars;
         final List<Method> methods;
 
-        public Cls(String name, List<Method> methods) {
+        public Cls(String name, List<Var> vars, List<Method> methods) {
             this.name = name;
+            this.vars = vars;
             this.methods = methods;
         }
     }
@@ -48,7 +49,7 @@ public class Ast {
 
     public static class Main extends Cls {
         public Main(String name, Method method) {
-            super(name, List.of(method));
+            super(name, List.of(), List.of(method));
         }
 
         final Method theMethod() {

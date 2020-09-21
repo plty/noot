@@ -40,10 +40,14 @@ parser code {:
     public static <T> List<T> prepend(T v, List<T> l) {
         return new ImmutableList.Builder<T>().add(v).addAll(l).build();
     }
+
+    public static <T> List<T> append(T v, List<T> l) {
+        return new ImmutableList.Builder<T>().addAll(l).add(v).build();
+    }
 :};
 
 terminal LPAREN, RPAREN, LBRACE, RBRACE;
-terminal COMMA, DOT, SEMI;
+terminal COMMA, SEMI;
 
 terminal CLASS, MAIN, RETURN;
 terminal VOID, BOOL, INT, STRING;
@@ -56,6 +60,8 @@ non terminal Ast.Main main_class;
 non terminal Ast.Method main_method;
 
 non terminal List<Ast.Cls> classes;
+non terminal List<Ast.Method> methods;
+
 non terminal List<Ast.Arg> args;
 non terminal List<Ast.Arg> rest_args;
 non terminal Ast.Body body;
@@ -68,21 +74,33 @@ non terminal Ast.Type type;
 non terminal Ast.Id id;
 
 program ::=
-      main_class:mc
-          {: RESULT = new Ast.Program(mc, null); :}
+    main_class:mc classes:cs
+          {: RESULT = new Ast.Program(mc, cs); :}
     ;
 
 main_class ::=
       CLASS CNAME:name LBRACE main_method:m RBRACE
           {: RESULT = new Ast.Main(name, m); :}
-      ;
+    ;
 
 main_method ::=
-        VOID MAIN LPAREN args:args RPAREN body:body
-              {: RESULT = new Ast.Method(new Ast.Id("main"), new Ast.Type("Void"), args, body); :}
-      ;
+      VOID MAIN LPAREN args:args RPAREN body:body
+          {: RESULT = new Ast.Method(new Ast.Id("main"), new Ast.Type("Void"), args, body); :}
+    ;
 
-classes ::= {: RESULT = List.of(); :};
+classes ::=
+      CLASS CNAME:name LBRACE vars:v methods:m RBRACE classes:rest
+          {: RESULT = prepend(new Ast.Cls(name, v, m), rest); :}
+    |
+          {: RESULT = List.of(); :}
+    ;
+
+methods ::=
+      type:t id:id LPAREN args:args RPAREN body:body methods:rest
+          {: RESULT = prepend(new Ast.Method(id, t, args, body), rest); :}
+    |
+          {: RESULT = List.of(); :}
+    ;
 
 body ::=
       LBRACE vars:v stmts:s RBRACE
@@ -95,9 +113,10 @@ stmts ::=
     ;
 
 vars ::=
-      var:v vars:vs
-          {: RESULT = prepend(v, vs); :}
-    | {: RESULT = List.of(); :}
+      vars:vs var:v
+          {: RESULT = append(v, vs); :}
+    |
+          {: RESULT = List.of(); :}
     ;
 
 var ::=
@@ -132,4 +151,9 @@ rest_args ::=
           {: RESULT = List.of(); :}
     ;
 
-id ::= ID:id {: RESULT = new Ast.Id(id); :};
+id ::=
+      ID:id
+          {: RESULT = new Ast.Id(id); :}
+    | MAIN
+          {: RESULT = new Ast.Id("main"); :}
+    ;

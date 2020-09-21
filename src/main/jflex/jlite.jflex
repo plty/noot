@@ -67,7 +67,6 @@ Integer = [0-9]+
   "{" { return symbol("{",sym.LBRACE); }
   "}" { return symbol("}",sym.RBRACE); }
   ";" { return symbol(";",sym.SEMI); }
-  "." { return symbol(";",sym.DOT); }
   "," { return symbol(";",sym.COMMA); }
 
   /* comments */
