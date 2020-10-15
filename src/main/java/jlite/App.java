@@ -5,6 +5,9 @@ package jlite;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
+import jlite.codegen.IRGen;
+import jlite.fp.Result;
 import jlite.parser.Ast;
 import jlite.parser.parser;
 
@@ -17,6 +20,18 @@ public class App {
                         .create();
                 Ast.Program program = parser.parse(fileLoc);
                 System.out.println(gson.toJson(program));
+
+                Result<Void> s = StaticChecker.check(program);
+                System.out.println("apasih???");
+                if (s.isErr()) {
+                    System.out.println("error: ");
+                    System.out.println(s.err.toString());
+                }
+
+                final var ir = IRGen.generateProgram(program);
+                System.out.println("bebonghong");
+                System.out.println(ir);
+                System.out.println(gson.toJson(ir));
             } catch (Exception e) {
                 e.printStackTrace();
             }

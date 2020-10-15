@@ -70,10 +70,12 @@ non terminal Ast.Main main_class;
 non terminal Ast.Method main_method;
 
 non terminal List<Ast.Cls> classes;
+non terminal List<Ast.Field> fields;
+non terminal Ast.Field field;
 non terminal List<Ast.Method> methods;
 
-non terminal List<Ast.Arg> args;
-non terminal List<Ast.Arg> rest_args;
+non terminal List<Ast.Param> params;
+non terminal List<Ast.Param> rest_params;
 non terminal Ast.Body body;
 
 non terminal List<Ast.Var> vars;
@@ -114,20 +116,32 @@ main_class ::=
     ;
 
 main_method ::=
-      VOID MAIN LPAREN args:args RPAREN body:body
-          {: RESULT = new Ast.Method(new Ast.Id("main"), new Ast.Type("Void"), args, body); :}
+      VOID MAIN LPAREN params:params RPAREN body:body
+          {: RESULT = new Ast.Method(new Ast.Id("main"), new Ast.Type("Void"), params, body); :}
     ;
 
 classes ::=
-      CLASS CNAME:name LBRACE vars:v methods:m RBRACE classes:rest
-          {: RESULT = prepend(new Ast.Cls(name, v, m), rest); :}
+      CLASS CNAME:name LBRACE fields:f methods:m RBRACE classes:rest
+          {: RESULT = prepend(new Ast.Cls(name, f, m), rest); :}
     |
           {: RESULT = List.of(); :}
     ;
 
+fields ::=
+      fields:fs field:f
+          {: RESULT = append(f, fs); :}
+    |
+          {: RESULT = List.of(); :}
+    ;
+
+field ::=
+      type:t id:id SEMI
+          {: RESULT = new Ast.Field(t, id); :}
+    ;
+
 methods ::=
-      type:t id:id LPAREN args:args RPAREN body:body methods:rest
-          {: RESULT = prepend(new Ast.Method(id, t, args, body), rest); :}
+      type:t id:id LPAREN params:params RPAREN body:body methods:rest
+          {: RESULT = prepend(new Ast.Method(id, t, params, body), rest); :}
     |
           {: RESULT = List.of(); :}
     ;
@@ -169,16 +183,16 @@ var ::=
           {: RESULT = new Ast.Var(t, id); :}
     ;
 
-args ::=
-      type:t id:id rest_args:rest
-          {: RESULT = prepend(new Ast.Arg(t, id), rest); :}
+params ::=
+      type:t id:id rest_params:rest
+          {: RESULT = prepend(new Ast.Param(t, id), rest); :}
     |
           {: RESULT = List.of(); :}
     ;
 
-rest_args ::=
-      COMMA type:t id:id rest_args:rest
-          {: RESULT = prepend(new Ast.Arg(t, id), rest); :}
+rest_params ::=
+      COMMA type:t id:id rest_params:rest
+          {: RESULT = prepend(new Ast.Param(t, id), rest); :}
     |
           {: RESULT = List.of(); :}
     ;
@@ -215,8 +229,8 @@ stmt ::=
           {: RESULT = new Ast.Call(new Ast.Id("println"), List.of(e)); :}
     | id:id ASSIGN expr:e SEMI
           {: RESULT = new Ast.Assignment(id, e); :}
-    | atom:a id:id ASSIGN expr:e SEMI
-          {: RESULT = new Ast.Assignment(new Ast.Member(a, id), e); :}
+    | atom:a DOT id:id ASSIGN expr:e SEMI
+          {: RESULT = new Ast.FieldAssignment(a, id, e); :}
     | atom:a LPAREN expr_list:el RPAREN SEMI
           {: RESULT = new Ast.Call(a, el); :}
     ;
@@ -333,7 +347,7 @@ atom ::=
       id:id
           {: RESULT = id; :}
     | LPAREN expr:e RPAREN
-          {: RESULT = new Ast.Brace(e); :}
+          {: RESULT = e; :}
     | NEW CNAME:c LPAREN RPAREN
           {: RESULT = new Ast.New(c); :}
     | NULL
@@ -341,7 +355,7 @@ atom ::=
     | THIS
           {: RESULT = new Ast.Id("this"); :}
     | atom:a DOT id:id
-          {: RESULT = new Ast.Member(a, id); :}
+          {: RESULT = new Ast.Access(a, id); :}
     | atom:a LPAREN expr_list:el RPAREN
           {: RESULT = new Ast.Call(a, el); :}
     ;
