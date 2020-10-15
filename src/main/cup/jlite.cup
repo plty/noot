@@ -224,9 +224,9 @@ stmt ::=
     | WHILE LPAREN expr:cond RPAREN block:b
           {: RESULT = new Ast.While(cond, b); :}
     | READLN LPAREN id:id RPAREN SEMI
-          {: RESULT = new Ast.Call(new Ast.Id("readln"), List.of(id)); :}
+          {: RESULT = new Ast.Syscall("readln", List.of(id)); :}
     | PRINTLN LPAREN expr:e RPAREN SEMI
-          {: RESULT = new Ast.Call(new Ast.Id("println"), List.of(e)); :}
+          {: RESULT = new Ast.Syscall("println", List.of(e)); :}
     | id:id ASSIGN expr:e SEMI
           {: RESULT = new Ast.Assignment(id, e); :}
     | atom:a DOT id:id ASSIGN expr:e SEMI

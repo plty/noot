@@ -27,21 +27,23 @@ public class TypeIndexer {
                         .fields.put(f.id.id, (Env.ClassType) e.types.get(f.type.name))
                 )
         );
-        classes.forEach(c -> c.methods
-                .forEach(m -> ((Env.ClassType) e.types.get(c.name))
-                        .methods.put(
-                                m.id.id,
-                                new Env.MethodType(
-                                        String.format("%s::%s", c.name, m.id.id),
-                                        (Env.ClassType) e.types.get(m.ret.name),
-                                        m.params.stream()
-                                                .map(p -> p.type.name)
-                                                .map(e.types::get)
-                                                .map(t -> (Env.ClassType) t)
-                                                .collect(Collectors.toList())
-                                )
-                        )
-                )
+        classes.forEach(c ->
+                c.methods.forEach(m -> {
+                    final var name =
+                            String.format("%s::%s", c.name, m.id.id);
+                    final var method = new Env.MethodType(
+                            name,
+                            (Env.ClassType) e.types.get(m.ret.name),
+                            m.params.stream()
+                                    .map(p -> p.type.name)
+                                    .map(e.types::get)
+                                    .map(t -> (Env.ClassType) t)
+                                    .collect(Collectors.toList())
+                    );
+
+                    e.types.put(name, method);
+                    ((Env.ClassType) e.types.get(c.name)).methods.put(m.id.id, method);
+                })
         );
         return e;
     }

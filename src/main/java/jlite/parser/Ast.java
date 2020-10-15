@@ -169,6 +169,16 @@ public class Ast {
         }
     }
 
+    public static class Syscall implements Node, Stmt {
+        public final String name;
+        public final List<Expr> args;
+
+        public Syscall(String name, List<Expr> args) {
+            this.name = name;
+            this.args = args;
+        }
+    }
+
     public static class Lit implements Node, Stmt, Expr {
         public final Object v;
 

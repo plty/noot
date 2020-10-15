@@ -29,21 +29,20 @@ public class Checker {
     }
 
     static Result<Map<Ast.Node, String>> onClass(Env e, Ast.Cls c) {
-        System.out.println(c.name);
-        System.out.println(e.types.get(c.name));
         final var env = e.update(
                 ((Env.ClassType) e.types.get(c.name)).fields,
                 ((Env.ClassType) e.types.get(c.name)).methods
         );
 
         return c.methods.stream()
-                .map(m -> onMethod(env, m))
+                .map(m -> onMethod(env, c, m))
                 .reduce(Result.of(ImmutableMap.of()), TypeHint::join);
     }
 
-    static Result<Map<Ast.Node, String>> onMethod(Env e, Ast.Method m) {
+    static Result<Map<Ast.Node, String>> onMethod(Env e, Ast.Cls c, Ast.Method m) {
         final var env = e.update(
                 new ImmutableMap.Builder<String, Env.ClassType>()
+                        .put(Map.entry("this", (Env.ClassType) e.types.get(c.name)))
                         .putAll(m.params.stream()
                                 .map(p -> Map.entry(p.id.id, (Env.ClassType) e.types.get(p.type.name)))
                                 .collect(Collectors.toList())
@@ -51,7 +50,6 @@ public class Checker {
                         .build(),
                 ImmutableMap.of()
         );
-        // TODO: inject "this"
         return onBody(env, m.body);
     }
 
@@ -72,7 +70,9 @@ public class Checker {
     }
 
     static Result<Map<Ast.Node, String>> onId(Env e, Ast.Id id) {
-        return Result.of(ImmutableMap.of(id, e.vars.get(id.id).name));
+        final var c = e.vars.get(id.id);
+        final var m = e.methods.get(id.id);
+        return Result.of(ImmutableMap.of(id, (c != null ? c : m).name));
     }
 
     static Result<Map<Ast.Node, String>> onStmt(Env e, Ast.Stmt s) {
@@ -88,6 +88,8 @@ public class Checker {
             return onFieldAssignment(e, (Ast.FieldAssignment) s);
         if (s instanceof Ast.Return)
             return onReturn(e, (Ast.Return) s);
+        if (s instanceof Ast.Syscall)
+            return onSyscall(e, (Ast.Syscall) s);
         return Result.err(new Error(String.format("Can't resolve %s", s)));
     }
 
@@ -109,9 +111,36 @@ public class Checker {
         return Result.err(new Error(String.format("Can't resolve %s", ex)));
     }
 
+    static Result<Map<Ast.Node, String>> onSyscall(Env e, Ast.Syscall c) {
+        if (c.name.equals("readln") && c.args.size() != 1)
+            return Result.err(new Error("readln only accept one parameter"));
+        if (c.name.equals("println") && c.args.size() != 1)
+            return Result.err(new Error("readln only accept one parameter"));
+
+        return c.args.stream()
+                .map(p -> onExpr(e, p))
+                .reduce(Result.of(ImmutableMap.of()), TypeHint::join);
+    }
+
     static Result<Map<Ast.Node, String>> onCall(Env e, Ast.Call c) {
-        // TODO: resolve this issue.
-        return Result.err(new Error("not yet supported"));
+        return onExpr(e, c.callee).then(r -> {
+            final var callEnv = onExpr(e, c.callee);
+            final var argsEnv = c.args.stream()
+                    .map(p -> onExpr(e, p))
+                    .reduce(Result.of(ImmutableMap.of()), TypeHint::join);
+            return TypeHint.join(callEnv, argsEnv).then(t -> {
+                final var m = (Env.MethodType) e.types.get(t.get(c.callee));
+                final var expects = m.params.stream()
+                        .map(p -> p.name)
+                        .collect(Collectors.joining(", "));
+                final var args = c.args.stream()
+                        .map(a -> e.types.get(t.get(a)).name)
+                        .collect(Collectors.joining(", "));
+                if (!expects.equals(args))
+                    return Result.err(new Error(String.format("expects (%s) got (%s) as args", expects, args)));
+                return TypeHint.join(Result.of(t), Result.of(ImmutableMap.of(c, m.ret.name)));
+            });
+        });
     }
 
     static Result<Map<Ast.Node, String>> onLit(Env e, Ast.Lit l) {
@@ -153,7 +182,6 @@ public class Checker {
         if (List.of("||", "&&").contains(o.op)) {
             if (!ts.get(o.l).equals("Bool") || !ts.get(o.r).equals("Bool"))
                 return Result.err(new Error("type mismatch on BinOp"));
-            System.out.println(">: ohno");
             return TypeHint.join(joined, Result.of(ImmutableMap.of(o, "Bool")));
         }
         return Result.err(new Error("should be impossible to happen"));
@@ -175,11 +203,13 @@ public class Checker {
         return Result.of(ImmutableMap.of(o, o.name));
     }
 
-    // TODO: make this able to resolve methods.
     static Result<Map<Ast.Node, String>> onAccess(Env e, Ast.Access a) {
         return onExpr(e, a.e).then(r -> {
-            final var t = ((Env.ClassType) e.types.get(r.get(a.e)))
+            final var c = ((Env.ClassType) e.types.get(r.get(a.e)))
                     .fields.get(a.id.id);
+            final var m = ((Env.ClassType) e.types.get(r.get(a.e)))
+                    .methods.get(a.id.id);
+            final var t = c != null ? c : m;
             return TypeHint.join(
                     Result.of(r),
                     Result.of(ImmutableMap.of(a, t.name))
@@ -223,7 +253,6 @@ public class Checker {
                 .then(ts -> {
                     if (!ts.get(b.lhs).equals(ts.get(b.rhs)))
                         return Result.err(new Error("type mismatch on assignment"));
-                    System.out.println(ts);
                     return Result.of(ts);
                 });
     }

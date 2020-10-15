@@ -1,19 +1,19 @@
 package jlite.codegen;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import jlite.Env;
-import jlite.TypeIndexer;
+import com.google.common.collect.ImmutableSet;
 import jlite.parser.Ast;
 import jlite.type_check.Checker;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class IRGen {
     static int lid = 0;
+
     public static String randstr() {
         return "__" + String.valueOf(++lid);
 //        return "__" + new Random().ints(96 + 1, 96 + 26 + 1)
@@ -24,13 +24,11 @@ public class IRGen {
 
     public static IR.Program generateProgram(Ast.Program p) {
         final var hints = Checker.check(p);
-        System.out.println("hints?");
         if (hints.isErr()) {
             System.out.println(hints.err.toString());
             return null;
         }
-        final var env = TypeIndexer.index(p);
-        HintedEnv e = new HintedEnv(env, hints.v);
+        HintedEnv e = new HintedEnv(hints.v, ImmutableSet.of());
 
         final var classes = new ImmutableList.Builder<Ast.Cls>().add(p.main).addAll(p.classes).build();
         return new IR.Program(
@@ -38,7 +36,7 @@ public class IRGen {
                         .map(IRGen::genData)
                         .collect(Collectors.toList()),
                 classes.stream()
-                        .flatMap(c -> c.methods.stream().map(m -> genMethod(e, m)))
+                        .flatMap(c -> c.methods.stream().map(m -> genMethod(e, c, m)))
                         .collect(Collectors.toList())
         );
     }
@@ -50,20 +48,28 @@ public class IRGen {
         );
     }
 
-    public static IR.Method genMethod(HintedEnv e, Ast.Method m) {
+    public static IR.Method genMethod(HintedEnv e, Ast.Cls c, Ast.Method m) {
+        e = e.update(m.body.vars.stream().map(var -> var.id.id).collect(Collectors.toSet()));
+        e = e.update(m.params.stream().map(p -> p.id.id).collect(Collectors.toSet()));
+        e = e.update(Set.of("this"));
+        final var env = e;
         final var gens = m.body.stmts.stream()
-                .map(s -> genStmt(e, s))
+                .map(s -> genStmt(env, s))
                 .collect(Collectors.toList());
         final var stmts = new ImmutableList.Builder<IR.Stmt>()
                 .addAll(gens.stream().flatMap(g -> g.vars.stream()).collect(Collectors.toList()))
                 .addAll(gens.stream().flatMap(g -> g.stmts.stream()).collect(Collectors.toList()))
                 .build();
         return new IR.Method(
-                m.id.id,
+                c.name + "::" + m.id.id,
                 m.ret.name,
-                m.params.stream()
-                        .map(p -> new IR.Param(p.type.name, p.id.id))
-                        .collect(Collectors.toList()),
+                new ImmutableList.Builder<IR.Param>()
+                        .add(new IR.Param(c.name, "this"))
+                        .addAll(m.params.stream()
+                                .map(p -> new IR.Param(p.type.name, p.id.id))
+                                .collect(Collectors.toList())
+                        )
+                        .build(),
                 stmts
         );
     }
@@ -97,7 +103,27 @@ public class IRGen {
             return genFieldAssignment(e, (Ast.FieldAssignment) s);
         if (s instanceof Ast.Return)
             return genReturn(e, (Ast.Return) s);
+        if (s instanceof Ast.Syscall)
+            return genSyscall(e, (Ast.Syscall) s);
         return null;
+    }
+
+    public static Gcode genSyscall(HintedEnv e, Ast.Syscall s) {
+        final var args = s.args.stream().map(arg -> genExpr(e, arg)).collect(Collectors.toList());
+        return new Gcode(
+                null,
+                args.stream()
+                        .flatMap(arg -> arg.vars.stream())
+                        .collect(Collectors.toList()),
+                new ImmutableList.Builder<IR.Stmt>()
+                        .addAll(
+                                args.stream()
+                                        .flatMap(arg -> arg.stmts.stream())
+                                        .collect(Collectors.toList())
+                        )
+                        .add(new IR.Syscall(s.name, args.stream().map(arg -> arg.ret).collect(Collectors.toList())))
+                        .build()
+        );
     }
 
     public static Gcode genWhile(HintedEnv e, Ast.While w) {
@@ -228,7 +254,15 @@ public class IRGen {
     }
 
     public static Gcode genId(HintedEnv e, Ast.Id ex) {
-        return new Gcode(ex.id, ImmutableList.of(), ImmutableList.of());
+        if (e.locals.contains(ex.id))
+            return new Gcode(ex.id, ImmutableList.of(), ImmutableList.of());
+
+        final var res = randstr();
+        return new Gcode(
+                res,
+                ImmutableList.of(new IR.Var(e.typeof(ex), res)),
+                ImmutableList.of(new IR.Access(res, "this", ex.id))
+        );
     }
 
     public static Gcode genLit(HintedEnv e, Ast.Lit ex) {
@@ -298,10 +332,68 @@ public class IRGen {
         );
     }
 
-    // TODO: resolve genCall value
     public static Gcode genCall(HintedEnv e, Ast.Call ex) {
         final var res = randstr();
-        return new Gcode(res, ImmutableList.of(), ImmutableList.of());
+        final var args = ex.args.stream().map(arg -> genExpr(e, arg)).collect(Collectors.toList());
+
+        if (ex.callee instanceof Ast.Id) {
+            return new Gcode(
+                    res,
+                    new ImmutableList.Builder<IR.Var>()
+                            .addAll(args.stream()
+                                    .flatMap(arg -> arg.vars.stream())
+                                    .collect(Collectors.toList())
+                            )
+                            .add(new IR.Var(e.typeof(ex), res))
+                            .build(),
+                    new ImmutableList.Builder<IR.Stmt>()
+                            .addAll(
+                                    args.stream()
+                                            .flatMap(arg -> arg.stmts.stream())
+                                            .collect(Collectors.toList())
+                            )
+                            .add(new IR.Call(
+                                    res,
+                                    e.typeof(ex.callee),
+                                    new ImmutableList.Builder<String>()
+                                            .add("this")
+                                            .addAll(args.stream().map(arg -> arg.ret).collect(Collectors.toList()))
+                                            .build()
+                            ))
+                            .build()
+            );
+        }
+
+        final var callee = ((Ast.Access) ex.callee);
+        final var lhs = genExpr(e, callee.e);
+        return new Gcode(
+                res,
+                new ImmutableList.Builder<IR.Var>()
+                        .addAll(lhs.vars)
+                        .addAll(args.stream()
+                                .flatMap(arg -> arg.vars.stream())
+                                .collect(Collectors.toList())
+                        )
+                        .add(new IR.Var(e.typeof(ex), res))
+                        .build(),
+                new ImmutableList.Builder<IR.Stmt>()
+                        .addAll(lhs.stmts)
+                        .addAll(
+                                args.stream()
+                                        .flatMap(arg -> arg.stmts.stream())
+                                        .collect(Collectors.toList())
+                        )
+                        .add(new IR.Call(
+                                res,
+                                e.typeof(ex.callee),
+                                new ImmutableList.Builder<String>()
+                                        .add(lhs.ret)
+                                        .addAll(args.stream().map(arg -> arg.ret).collect(Collectors.toList()))
+                                        .build()
+                        ))
+                        .build()
+        );
+
     }
 
     public static class Gcode {
@@ -317,23 +409,22 @@ public class IRGen {
     }
 
     public static class HintedEnv {
-        public final Env env;
         public final Map<Ast.Node, String> hints;
+        public final Set<String> locals;
 
-        public HintedEnv(Env env, Map<Ast.Node, String> hints) {
-            this.env = env;
+        public HintedEnv(Map<Ast.Node, String> hints, Set<String> locals) {
             this.hints = hints;
+            this.locals = locals;
         }
 
         public String typeof(Ast.Node n) {
             return hints.get(n);
         }
 
-        public HintedEnv update(
-                ImmutableMap<String, Env.ClassType> vars,
-                ImmutableMap<String, Env.MethodType> methods
-        ) {
-            return new HintedEnv(env.update(vars, methods), hints);
+        public HintedEnv update(Set<String> locals) {
+            Set<String> l = new HashSet<>(this.locals);
+            l.addAll(locals);
+            return new HintedEnv(hints, l);
         }
     }
 }

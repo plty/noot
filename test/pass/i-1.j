@@ -14,11 +14,19 @@ class Yeet {
     }
 }
 
+class Box {
+    Int x;
+    Int y;
+    Int z;
+}
+
 class Heet {
     Bool b;
 
     Void main(Int x, Int y) {
-        b = x == y;
+        this.main(x, y);
+        readln(x);
+        b = true;
         return ;
     }
 }

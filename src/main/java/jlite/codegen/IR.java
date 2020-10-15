@@ -1,7 +1,5 @@
 package jlite.codegen;
 
-import jlite.parser.Ast;
-
 import java.util.List;
 
 public class IR {
@@ -160,6 +158,28 @@ public class IR {
             this.lhs = lhs;
             this.rhs = rhs;
             this.member = member;
+        }
+    }
+
+    public static class Call extends Stmt {
+        public final String lhs;
+        public final String rhs;
+        public final List<String> args;
+
+        public Call(String lhs, String rhs, List<String> args) {
+            this.lhs = lhs;
+            this.rhs = rhs;
+            this.args = args;
+        }
+    }
+
+    public static class Syscall extends Stmt {
+        public final String lhs;
+        public final List<String> args;
+
+        public Syscall(String lhs, List<String> args) {
+            this.lhs = lhs;
+            this.args = args;
         }
     }
 
